@@ -501,7 +501,7 @@ Panel {
               rowKey: "touch"
               visible: root.supports("touch-sensor")
               label: "Touch controls"
-              hint: sony.state.protocol === 2 ? "Turning them off briefly reconnects the headphones" : ""
+              hint: sony.state.protocol === 2 ? "Switching off briefly reconnects" : ""
               checked: !!sony.state.touch_sensor
             }
 
