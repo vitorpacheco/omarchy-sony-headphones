@@ -71,7 +71,7 @@ Panel {
       if (sony.state.speak_to_chat) {
         list.push("stc-sensitivity")
         list.push("stc-timeout")
-        list.push("stc-focus")
+        if (supports("speak-to-chat-voice-focus")) list.push("stc-focus")
       }
     }
     if (supports("pause-when-taken-off")) list.push("pause")
@@ -464,7 +464,7 @@ Panel {
 
             ToggleRow {
               rowKey: "stc-focus"
-              visible: !!sony.state.speak_to_chat
+              visible: !!sony.state.speak_to_chat && root.supports("speak-to-chat-voice-focus")
               label: "Voice focus while chatting"
               checked: !!sony.state.stc_focus_on_voice
             }
@@ -501,6 +501,7 @@ Panel {
               rowKey: "touch"
               visible: root.supports("touch-sensor")
               label: "Touch controls"
+              hint: sony.state.protocol === 2 ? "Turning them off briefly reconnects the headphones" : ""
               checked: !!sony.state.touch_sensor
             }
 

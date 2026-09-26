@@ -59,21 +59,30 @@ changes a setting on the headphones unless you ask it to.
 
 ## Supported models
 
-The plugin speaks Sony's **v1** protocol, used by the over-ear 1000X line up to
-the XM4:
+Sony has two generations of the protocol. The over-ear 1000X line speaks
+**v1** up to the XM4 and **v2** from the XM5 on; the plugin tells them apart
+from the headphones' first answer and speaks whichever they do:
 
-| Model | Status |
-|---|---|
-| WH-1000XM4 | Verified on hardware, firmware 3.0.1 — every setting below round-tripped |
-| WH-1000XM3, WH-1000XM2 | Same protocol, untested — reports welcome |
-| WF-1000XM4/XM5, WH-1000XM5/XM6, LinkBuds, CH720N | **Not supported.** These speak the v2 protocol; the plugin detects them and says so instead of sending bytes they will ignore |
+| Model | Protocol | Status |
+|---|---|---|
+| WH-1000XM5 | v2 | Verified on hardware, firmware 2.5.1 — every setting below round-tripped |
+| WH-1000XM4 | v1 | Verified on hardware, firmware 3.0.1 — every setting below round-tripped |
+| WH-1000XM3, WH-1000XM2 | v1 | Same protocol, untested — reports welcome |
+| WH-1000XM6, WF-1000XM4/XM5, LinkBuds, CH720N | v2 | Untested. Should connect, but only partly supported — see below |
 
 Each model honours a different subset, so the panel only draws the rows that
 model actually accepts — a control that silently does nothing is worse than one
-that is not offered. On a WH-1000XM4 that means no touch-panel switch and no
-auto-power-off timers: the headphones answer "still on" and "when taken off" to
-every such request, whatever you send them. A model this plugin does not
-recognise is offered everything.
+that is not offered. A v2 model lists what it supports, and that list is what
+decides. A v1 model does not, so the plugin keeps a table: on a WH-1000XM4 that
+means no touch-panel switch and no auto-power-off timers, because the headphones
+answer "still on" and "when taken off" to every such request, whatever you send
+them. A v1 model the table does not know is offered everything.
+
+Other v2 models get whatever they share with the WH-1000XM5. The noise
+cancelling layout, the ten-band equalizer and the new ambient options of the
+WH-1000XM6, and the left, right and case batteries of the earbuds, are not
+implemented, so those rows stay empty or hidden. `bin/sony-headphones probe`
+prints the list a model reports, which is what adding one needs.
 
 ## What you can change
 
@@ -83,9 +92,9 @@ recognise is offered everything.
 | Ambient level | 0–20, with Focus on Voice |
 | Equalizer | The nine presets plus Manual; custom bands via the CLI |
 | DSEE Extreme | Upscaling of compressed audio |
-| Speak-to-Chat | On/off, sensitivity, resume timeout, voice focus |
+| Speak-to-Chat | On/off, sensitivity, resume timeout; voice focus on the WH-1000XM4 |
 | Pause when taken off, voice guidance | |
-| Touch controls | On models that allow it — not the WH-1000XM4 |
+| Touch controls | On models that allow it — not the WH-1000XM4. The WH-1000XM5 reconnects to switch them off |
 | Automatic power off | Never or when taken off; timers on models that honour them |
 | Battery, firmware, codec | Read-only |
 
@@ -142,6 +151,15 @@ Sony's app protocol runs over an RFCOMM serial channel. Messages are framed as
 bytes never appear inside a message, and every message — in both directions —
 is answered with an acknowledgement carrying the flipped sequence number.
 
+The v2 models keep that framing and change the payloads: most commands moved,
+and most on/off bytes flipped so that zero means on. They also describe
+themselves. Asked, they return two lists of the functions they support, and
+their numbered setting slots name themselves — which is how the touch panel is
+found on the WH-1000XM5, in slot one, next to multipoint. Some changes need the
+headphones' consent: switching the touch panel off is refused unless they are
+first allowed to ask for confirmation, and the helper answers yes to that
+question only when it has just asked for that change.
+
 `bin/sony-headphones watch` keeps that link open and serves a unix socket, so
 the widget gets push updates when you press the button on the earcup, and short
 CLI calls apply instantly instead of paying for a fresh connection each time.
@@ -191,17 +209,19 @@ be a socket you own.
 ## Development
 
 ```bash
-python3 tests/test_protocol.py     # 126 tests, no headphones required
+python3 tests/test_protocol.py     # 164 tests, no headphones required
 omarchy plugin validate .
 ```
 
-There is a stand-in device for working without hardware. It answers requests
-with real reply payloads through the real framing, so the widget can be driven
-end to end and every setting is round-tripped in the test suite:
+There are stand-in devices for working without hardware, a WH-1000XM4 and a
+WH-1000XM5. They answer requests with real reply payloads through the real
+framing, so the widget can be driven end to end and every setting is
+round-tripped in the test suite:
 
 ```bash
 SONY_HEADPHONES_DEMO=1 bin/sony-headphones status
-SONY_HEADPHONES_DEMO=1 bin/sony-headphones watch   # the widget attaches to this
+SONY_HEADPHONES_DEMO=1 bin/sony-headphones watch     # the widget attaches to this
+SONY_HEADPHONES_DEMO=xm5 bin/sony-headphones watch   # the same, speaking v2
 ```
 
 Editing the QML reloads the widget on save. Editing `Model.js` does not — the
@@ -217,6 +237,11 @@ message framing was cross-checked against
 [SonyHeadphonesClient](https://github.com/Plutoberth/SonyHeadphonesClient) and
 [SonyBridge](https://github.com/AmitRajput-Dev/SonyBridge), and the RFCOMM
 layer against [ohm-app's protocol notes](https://github.com/ohm-app/sony-headphones-bluetooth-documentation).
+
+The v2 layouts follow Sony's own message definitions as recovered by
+[mos9527's SonyHeadphonesClient](https://github.com/mos9527/SonyHeadphonesClient),
+checked against Gadgetbridge's `SonyProtocolImplV2` and then against a
+WH-1000XM5.
 
 This is an independent project. Sony has nothing to do with it.
 
