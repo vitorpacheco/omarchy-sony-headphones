@@ -96,7 +96,20 @@ prints the list a model reports, which is what adding one needs.
 | Pause when taken off, voice guidance | |
 | Touch controls | On models that allow it — not the WH-1000XM4. The WH-1000XM5 reconnects to switch them off |
 | Automatic power off | Never or when taken off; timers on models that honour them |
-| Battery, firmware, codec | Read-only |
+| Codec | Whatever PipeWire can switch the headphones to — see below |
+| Priority | Sound quality or a stable connection, on v2 models that offer it. A stable connection rules out LDAC |
+| Battery, firmware | Read-only |
+
+The codec is the computer's choice rather than the headphones', so the panel
+asks PipeWire, which offers one profile per codec the pair can use, and lists
+only what it offers right now. A switch counts once PipeWire reports it: the
+usual failure is another Bluetooth device already streaming with that codec,
+and the panel says so instead of pretending. Changing the priority makes the
+headphones offer a different set of codecs, which PipeWire learns only when the
+audio link is set up again; the headphones sometimes do that themselves, and
+the helper reconnects the audio profile when they do not. Expect a few seconds
+of silence either way. WirePlumber also remembers the last profile you picked
+and restores it when the audio reconnects.
 
 ## Keyboard
 
@@ -140,6 +153,8 @@ bin/sony-headphones set ambient-level 12
 bin/sony-headphones set eq bass-boost
 bin/sony-headphones set eq-bands "2,0,1,0,-1,3"   # clear bass + 5 bands, -10..10
 bin/sony-headphones set dsee toggle
+bin/sony-headphones set codec SBC-XQ            # any codec PipeWire offers
+bin/sony-headphones set priority connection     # or sound-quality
 bin/sony-headphones set speak-to-chat on
 bin/sony-headphones watch               # stream state changes as JSON lines
 ```
@@ -188,8 +203,10 @@ poll as a dead link, and a command that arrives on one reconnects and runs
 rather than failing in your hands.
 
 Nothing here touches the network. The only things it talks to are the
-headphones and `bluetoothctl`, which is run from its absolute path with a
-minimal environment rather than resolved through the inherited `PATH`. The
+headphones, `bluetoothctl` and `pactl`, both run from their absolute paths
+with a minimal environment rather than resolved through the inherited `PATH`;
+`pactl` gets the runtime directory as well, once it has been checked, since
+that is where PipeWire's socket lives. The
 helper is launched the same way: the shell runs it with `/usr/bin/python3 -I`
 — never a `python3` looked up on `PATH`, and isolated from `PYTHON*` variables
 and user site-packages — and hands it only `HOME`, `XDG_RUNTIME_DIR`,
@@ -209,7 +226,7 @@ be a socket you own.
 ## Development
 
 ```bash
-python3 tests/test_protocol.py     # 164 tests, no headphones required
+python3 tests/test_protocol.py     # 179 tests, no headphones required
 omarchy plugin validate .
 ```
 
